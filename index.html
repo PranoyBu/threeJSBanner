@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Phone Promotion Banner</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        .banner-container {
+            width: 300px;
+            height: 400px;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(135deg, #545858, #b9b9b9);
+        }
+
+        canvas {
+            width: 300px !important;
+            height: 400px !important;
+            display: block;
+        }
+
+        .promo-text,
+        .promo-text-second {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            font-size: 1.1em;
+            text-align: center;
+            pointer-events: none;
+            width: 280px;
+            padding: 0 10px;
+            box-sizing: border-box;
+            opacity: 0;
+            /* Start hidden */
+        }
+
+        .big-text {
+            position: absolute;
+            top: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            font-size: 1.5em;
+            text-align: center;
+            pointer-events: none;
+            width: 280px;
+            opacity: 0;
+            /* Start hidden */
+        }
+
+        @media (max-width: 768px) {
+
+            .promo-text,
+            .promo-text-second {
+                font-size: 0.8em;
+                top: 15px;
+            }
+
+            .big-text {
+                font-size: 0.8em;
+                top: 140px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="banner-container">
+        <div class="promo-text">New Smartphone Launch!</div>
+        <div class="promo-text-second">Available Now!</div>
+        <div class="big-text">Get It Today!</div>
+        <canvas></canvas>
+    </div>
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = null;
+        const camera = new THREE.PerspectiveCamera(75, 300 / 400, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+            canvas: document.querySelector('canvas')
+        });
+        renderer.setSize(300, 400);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+
+        // Log canvas size
+        console.log('Canvas size:', renderer.domElement.width, renderer.domElement.height);
+
+        // Enhanced lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        directionalLight.position.set(5, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 1024;
+        directionalLight.shadow.mapSize.height = 1024;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 50;
+        scene.add(directionalLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
+        pointLight.position.set(-5, 5, 5);
+        scene.add(pointLight);
+        const spotLight = new THREE.SpotLight(0xffffff, 1.5);
+        spotLight.position.set(0, 15, 150);
+        spotLight.angle = Math.PI / 6;
+        spotLight.penumbra = 0.2;
+        spotLight.castShadow = true;
+        scene.add(spotLight);
+
+        // Shadow plane
+        const planeGeometry = new THREE.PlaneGeometry(5, 5);
+        const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.2 });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.y = -0.2;
+        plane.receiveShadow = true;
+        scene.add(plane);
+
+        // OrbitControls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableZoom = false;
+        controls.enablePan = false;
+        controls.enableRotate = false;
+
+        // Load GLB model
+        const loader = new THREE.GLTFLoader();
+        let model;
+        let floatingTween;
+        let masterTimeline;
+        loader.load('models/samsung_phone.glb', (gltf) => {
+            model = gltf.scene;
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    if (child.material) {
+                        child.material.emissive = new THREE.Color(0x222222);
+                        child.material.emissiveIntensity = 0.3;
+                        child.material.roughness = 0.4;
+                        child.material.metalness = 0.6;
+                    }
+                }
+            });
+            scene.add(model);
+
+            // Debug model size
+            const box = new THREE.Box3().setFromObject(model);
+            const size = new THREE.Vector3();
+            const center = new THREE.Vector3();
+            box.getSize(size);
+            box.getCenter(center);
+            console.log('Model size:', size);
+            console.log('Model center:', center);
+
+            // Center and adjust model
+            model.position.sub(center);
+            model.position.y += 0.2;
+            model.position.x = -5; // Start off-screen left
+            model.scale.set(0.01, 0.01, 0.01);
+
+            // Floating tween
+            floatingTween = gsap.to(model.position, {
+                y: "+=0.1",
+                duration: 1,
+                yoyo: true,
+                repeat: -1,
+                ease: "sine.inOut",
+                paused: true
+            });
+
+            // GSAP pulse scale (always running)
+            // gsap.to(model.scale, {
+            //     x: 0.012,
+            //     y: 0.012,
+            //     z: 0.012,
+            //     duration: 1.5,
+            //     yoyo: true,
+            //     repeat: -1,
+            //     ease: "sine.inOut"
+            // });
+
+            // GSAP timeline
+            masterTimeline = gsap.timeline({ repeat: -1 });
+            // Initial animation
+            masterTimeline.to(model.position, {
+                x: 0,
+                duration: 1.5,
+                ease: "power2.out"
+            }, 0);
+            masterTimeline.to(model.rotation, {
+                y: Math.PI * 2,
+                duration: 1.5,
+                ease: "power2.out"
+            }, 0);
+            // Main sequence
+            masterTimeline.to(model.rotation, {
+                y: "+=" + (Math.PI * 2 * 5), // 5 rotations
+                duration: 40,
+                ease: "none"
+            }, "rotation");
+            masterTimeline.to(".promo-text", {
+                opacity: 1,
+                y: 0,
+                duration: 1,
+                ease: "power2.out"
+            }, "rotation+=2");
+            masterTimeline.to(".promo-text", {
+                opacity: 0,
+                duration: 1,
+                ease: "power2.in"
+            }, "rotation+=18");
+            masterTimeline.to(".promo-text-second", {
+                opacity: 1,
+                y: 0,
+                duration: 1,
+                ease: "power2.out"
+            }, "rotation+=20");
+            masterTimeline.to(".promo-text-second", {
+                opacity: 0,
+                duration: 1,
+                ease: "power2.in"
+            }, "rotation+=38");
+            masterTimeline.to(model.position, {
+                y: -5,
+                duration: 1,
+                ease: "power2.in"
+            });
+            masterTimeline.to(".big-text", {
+                opacity: 1,
+                duration: 1,
+                ease: "power2.out"
+            });
+            masterTimeline.to(".big-text", {
+                opacity: 0,
+                duration: 1,
+                ease: "power2.in",
+                delay: 2
+            });
+            masterTimeline.to(model.position, {
+                y: 0.2,
+                duration: 1,
+                ease: "power2.out"
+            });
+            masterTimeline.add(() => floatingTween.play());
+            masterTimeline.to({}, { duration: 10 });
+            masterTimeline.add(() => floatingTween.pause());
+
+            // Pause on user interaction
+            controls.addEventListener('start', () => {
+                masterTimeline.pause();
+                floatingTween.pause();
+            });
+            controls.addEventListener('end', () => {
+                masterTimeline.resume();
+                if (masterTimeline.time() > 52.5) {
+                    floatingTween.resume();
+                }
+            });
+        }, undefined, (error) => {
+            console.error('Error loading model:', error);
+        });
+
+        // Camera position
+        camera.position.set(0, .5, 1.8);
+
+        // Render loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Resize handler (maintain 300x400)
+        window.addEventListener('resize', () => {
+            camera.aspect = 300 / 400;
+            camera.updateProjectionMatrix();
+            renderer.setSize(300, 400);
+        });
+    </script>
+</body>
+
+</html>
